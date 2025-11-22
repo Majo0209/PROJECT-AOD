@@ -7,6 +7,14 @@ Sobre este DW se construye un dashboard interactivo en Streamlit para análisis 
 
 ---
 
+# 0. Objetivo general del proyecto
+
+El objetivo general del proyecto es analizar la evolución temporal, espacial y espectral del Aerosol Optical Depth (AOD) para identificar diferencias en la composición de partículas atmosféricas (finas vs gruesas) en los sitios de observación AERONET administrados por NASA.
+
+Este objetivo se logra mediante un pipeline híbrido (streaming + batch) que integra Kafka, Airflow, Open-Meteo, Great Expectations y un DW en MySQL.
+
+---
+
 ## 1. Contexto del problema
 
 Los **aerosoles atmosféricos** son partículas diminutas que flotan en el aire. Aunque no las vemos, tienen efectos importantes:
@@ -142,9 +150,82 @@ Flujo general del proyecto:
 
 ---
 
-## 4. Componentes principales
+# **4. EDA del archivo original y transformaciones**
 
-### 4.1. `producer.py`
+## 4.1 Características generales del archivo original
+
+El archivo contenía más de 1.3 millones de registros con las siguientes particularidades:
+
+* Mediciones diarias estandarizadas a las 12:00 UTC.
+* Sitios identificados por latitud, longitud y elevación.
+* 82 columnas totales, muchas redundantes o irrelevantes.
+  <img width="1061" height="429" alt="image" src="https://github.com/user-attachments/assets/72eb78e7-a66a-4847-a7d1-23f79e79c6bb" />
+
+* Valores faltantes representados por -999.
+  <img width="1057" height="451" alt="image" src="https://github.com/user-attachments/assets/e4f0410f-8b33-4226-90b0-a4d79d8f145a" />
+
+* Valores de AOD negativos (fisicamente imposible)
+* Varias columnas de AOD para diferentes longitudes de onda (340–1020 nm).
+* Presencia de Ångström Exponent, útil para estimar el tamaño relativo de las partículas.
+* Variabilidad significativa entre sitios y entre bandas espectrales.
+
+**Conclusión general del EDA:**
+El dataset es extenso, heterogéneo y complejo. Su estructura en formato ancho y la presencia de valores inválidos vuelven inviable su análisis directo, lo que justifica la creación del pipeline ETL.
+
+---
+
+## 4.2 Problemas detectados y transformaciones asociadas
+
+### 1. Exceso de columnas y redundancia
+
+* Reducción de 82 columnas a 31 columnas clave.
+* Se mantuvieron solo las variables esenciales para análisis espectral, espacial y temporal.
+
+### 2. Valores faltantes representados por -999
+
+* Se reemplazaron por `NaN`.
+* Se excluyeron en cálculos sensibles para evitar sesgos.
+
+### 3. AOD con valores negativos
+
+* Cualquier valor < 0 fue reemplazado por 0.
+* Se aplicó un criterio físico consistente: el AOD no puede ser negativo.
+
+### 4. Falta de contexto geográfico
+
+* Se enriqueció con Natural Earth (país y continente).
+* Permite análisis espaciales coherentes.
+
+### 5. Dataset en formato ancho (wide)
+
+* Conversión a formato largo mediante `melt()`.
+* Cada fila pasó a representar: sitio – fecha – longitud de onda – valor AOD.
+
+Esto permitió:
+
+* Comparación correcta entre bandas espectrales,
+* Normalización,
+* Estructura ideal para el modelo dimensional (fact + dims).
+
+---
+
+## 4.3 Nuevas columnas creadas durante las transformaciones
+
+* **Spectral_Band:** clasificación UV, VIS o NIR.
+* **Sensitive_Aerosol:** sensibilidad del AOD a partículas finas, mixtas o gruesas.
+* **Particle_type:**
+
+  * ≥ 1.5 → finas
+  * 1.0–1.5 → mixtas
+  * ≤ 1.0 → gruesas
+
+Estas columnas permitieron relacionar el espectro óptico con el tamaño de partícula para análisis físico y climático.
+
+---
+
+## 5. Componentes principales
+
+### 5.1. `producer.py`
 
 * Punto de entrada del pipeline.
 
@@ -163,7 +244,7 @@ Flujo general del proyecto:
 
 * Al final envía un mensaje `sentinel` para indicar el fin del stream.
 
-### 4.2. `consumer.py` (transformador principal)
+### 5.2. `consumer.py` (transformador principal)
 
 * Escucha `general_input`.
 * Limpia y transforma:
@@ -189,7 +270,7 @@ Flujo general del proyecto:
   * `fine_batch` → `fine_particles` (solo partículas finas).
 * Reenvía `sentinel` cuando se termina el stream.
 
-### 4.3. `enriquecimiento_general.py` (consumer enriquecedor)
+### 5.3. `enriquecimiento_general.py` (consumer enriquecedor)
 
 * Escucha `general_output`.
 * Construye combinaciones únicas **fecha–latitud–longitud** desde `fact + dim_site + dim_date`.
@@ -206,7 +287,7 @@ Flujo general del proyecto:
   * Nuevas filas de `dim_weather`.
 * Envía `sentinel` a `check` al final del flujo.
 
-### 4.4. `consumer_check_rebuild.py` (data quality)
+### 5.4. `consumer_check_rebuild.py` (data quality)
 
 Este archivo es el **consumidor de calidad** del pipeline:
 
@@ -256,7 +337,7 @@ Flujo de validación:
 
 En resumen, este script es el **filtro de control de calidad en tiempo real**: solo los datos que pasan por este umbral alimentan el data warehouse y, por tanto, lo que se ve en el dashboard.
 
-### 4.5. `consumer_fine_particles.py`
+### 5.5. `consumer_fine_particles.py`
 
 * Escucha el topic `fine_particles`.
 * Espera el primer mensaje válido (`fine_batch` o `sentinel`).
@@ -276,7 +357,7 @@ Sirve para obtener un dataset denso solo de partículas finas para análisis, pr
 
 ---
 
-## 5. Data Quality con Great Expectations
+## 6. Data Quality con Great Expectations
 
 En el pipeline, el módulo de **data quality** se ejecuta **en tiempo real antes de cargar cualquier lote** a la base de datos:
 
@@ -300,9 +381,46 @@ De esta forma, el dashboard trabaja siempre con datos que han pasado por un mín
 
 ---
 
-## 6. Cómo ejecutar el proyecto
+# **6. Airflow DAG Design**
 
-### 6.1. Requisitos
+El flujo batch procesado por Apache Airflow se basa en un DAG diseñado para ejecutar cinco etapas clave:
+
+### 1. Extract
+
+Lee el CSV generado por el consumidor de partículas finas, valida columnas esenciales y genera un parquet de staging.
+
+### 2. Enrich
+
+Consulta la API histórica de Open-Meteo para obtener variables climáticas para cada combinación única de fecha, latitud y longitud.
+Incluye caching, reintentos y control de errores.
+
+### 3. Merge
+
+Integra el parquet crudo con el parquet meteorológico utilizando Polars.
+Genera un dataset enriquecido en formato Parquet y CSV.
+
+### 4. Quality Check
+
+Usa Great Expectations para validar:
+
+* Rango físico de variables,
+* Ausencia de nulos en columnas clave,
+* Integridad de llaves,
+* Unicidad de Fact_ID.
+
+Si menos del 90 % de las expectativas se cumplen, el DAG falla intencionalmente.
+
+### 5. Load
+
+Carga la dimensión `dim_estatic` en MySQL y actualiza `fact_aod` asignando `id_estatic` mediante join con `dim_site` y `dim_date`.
+
+El DAG está configurado sin schedule automático y se activa mediante el script `consumer_fine_particles.py`.
+
+---
+
+## 8. Cómo ejecutar el proyecto
+
+### 8.1. Requisitos
 
 * Python 3.x
 * Apache Kafka + Zookeeper (entorno local).
@@ -314,7 +432,7 @@ De esta forma, el dashboard trabaja siempre con datos que han pasado por un mín
 
 *(Se recomienda usar `requirements.txt` y un entorno virtual.)*
 
-### 6.2. Arrancar Zookeeper y Kafka (Windows)
+### 8.2. Arrancar Zookeeper y Kafka (Windows)
 
 Desde la carpeta de Kafka:
 
@@ -336,7 +454,7 @@ En otra terminal:
 netstat -an | findstr 9092
 ```
 
-### 6.3. Crear topics
+### 8.3. Crear topics
 
 ```bash
 .\bin\windows\kafka-topics.bat --create --topic general_input   --bootstrap-server localhost:9092
@@ -348,7 +466,7 @@ netstat -an | findstr 9092
 .\bin\windows\kafka-topics.bat --list --bootstrap-server localhost:9092
 ```
 
-### 6.4. Orden de ejecución del pipeline
+### 8.4. Orden de ejecución del pipeline
 
 En Visual Studio Code / terminales separados:
 
@@ -375,13 +493,95 @@ En Visual Studio Code / terminales separados:
 
 A medida que el producer envía lotes, los consumers van transformando, enriqueciendo, validando y cargando los datos en MySQL, y el dashboard se va alimentando de ese DW.
 
+### 8.5. Cómo ejecutar el DAG en Airflow (Nueva sección solicitada)
+
+### 1. Iniciar Airflow con Docker Compose:
+
+```bash
+docker-compose up -d
+```
+
+### 2. Acceder a la interfaz web:
+
+```
+http://localhost:8080
+```
+
+Usuario por defecto:
+
+* user: airflow
+* password: airflow
+
+### 3. Habilitar el DAG:
+
+En la UI, activar:
+
+```
+etl_fine_particles_meteo_enrichment
+```
+
+### 4. Ejecutar el DAG:
+
+* Click en **Trigger DAG**
+* Verificar logs de cada task
+* El DAG leerá `fine_particles.csv` generado por Kafka
+
+### 5. Correr el dashboard Estático:
+
+El dashboard se encuentra en la carpeta `dashboard/` y el script principal es `streamlit.py`.
+
+1. Verificar conexión a MySQL  
+
+   El dashboard se conecta a la base de datos y consulta las tablas:
+
+   - `fact_aod`
+   - `dim_date`
+   - `dim_site`
+   - `dim_estatic`
+
+   El archivo `streamlit.py` usa estas variables de conexión:
+
+   - `MYSQL_HOST` (por defecto: `localhost`)
+   - `MYSQL_PORT` (por defecto: `3306`)
+   - `MYSQL_USER` (por defecto: `root`)
+   - `MYSQL_PASSWORD` (por defecto: `root`)
+   - Base de datos fija en el código: `prueba`
+
+   Si no defines variables de entorno, se usarán esos valores por defecto, que deben coincidir con tu servidor MySQL.
+
+2. Configurar `secrets.toml` (opcional)
+
+   En `dashboard/.streamlit/secrets.toml` puedes guardar la configuración de MySQL, por ejemplo:
+
+   ```toml
+   [mysql]
+   host = "localhost"
+   port = 3306
+   user = "root"
+   password = "root"
+   database = "prueba"````
+
+3. Ejecutar el dashboard
+
+   Desde la raíz del proyecto:
+
+   ```bash
+   cd dashboard
+   streamlit run streamlit.py
+   ```
+
+   Por defecto Streamlit quedará disponible en:
+
+   ```
+   http://localhost:8501
+   ```
 ---
 
-## 7. Dashboard de AOD
+## 9. Dashboard de AOD
 
 El dashboard en Streamlit permite explorar el AOD desde varias dimensiones:
 
-### 7.1. ¿Qué se puede ver?
+### 9.1. ¿Qué se puede ver?
 
 * **Nivel de carga de aerosoles**:
 
@@ -420,7 +620,7 @@ El dashboard en Streamlit permite explorar el AOD desde varias dimensiones:
 
   * Posibilidad de descargar subconjuntos de datos para análisis externos, modelos adicionales o reportes personalizados.
 
-### 7.2. ¿A quién le puede interesar?
+### 9.2. ¿A quién le puede interesar?
 
 * Investigadores en calidad del aire y clima.
 * Autoridades ambientales.
@@ -432,7 +632,9 @@ El dashboard funciona tanto como **herramienta de análisis histórico** como de
 
 ---
 
-## 8. Conclusiones
+
+
+## 11. Conclusiones
 
 * El proyecto integra en un solo pipeline las fases de **extracción, transformación, enriquecimiento, control de calidad y carga** de datos AOD.
 
@@ -455,5 +657,8 @@ El dashboard funciona tanto como **herramienta de análisis histórico** como de
   * ¿Bajo qué condiciones meteorológicas se presentan los mayores episodios de AOD?
 
 * Gracias al umbral de calidad del **85 %**, se garantiza que las conclusiones que se extraen del dashboard estén basadas en datos con un nivel mínimo de **consistencia y confiabilidad**.
+
+En conjunto, este proyecto muestra un ejemplo completo de cómo diseñar e implementar un **pipeline ETL en streaming** orientado a análisis ambiental, integrando datos satelitales, APIs externas, validación automática y visualización interactiva.
+
 
 En conjunto, este proyecto muestra un ejemplo completo de cómo diseñar e implementar un **pipeline ETL en streaming** orientado a análisis ambiental, integrando datos satelitales, APIs externas, validación automática y visualización interactiva.
