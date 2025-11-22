@@ -1,0 +1,54 @@
+########################
+# Python básico
+########################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+########################
+# Entorno virtual
+########################
+aod-env/
+venv/
+.env
+*.env
+
+########################
+# Editores / IDE
+########################
+.vscode/
+.idea/
+
+########################
+# Airflow / logs
+########################
+logs/
+airflow.db
+airflow.cfg
+
+########################
+# Datos y artefactos
+########################
+
+# Ignorar TODO lo de la carpeta data (CSV grandes, shapefiles, etc.)
+data/
+
+########################
+# Cachés varias
+########################
+.cache/
+*.log
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+########################
+# Sistema operativo
+########################
+.DS_Store
+Thumbs.db
