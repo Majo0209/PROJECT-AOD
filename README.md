@@ -1,26 +1,26 @@
-````markdown
 # AERONET AOD Streaming Pipeline
 
-Pipeline ETL en streaming para procesar, enriquecer y validar datos de aerosoles atmosféricos (AOD) de la red AERONET de la NASA, integrados con información meteorológica histórica de la API Open-Meteo y cargados a un Data Warehouse en MySQL.  
+Pipeline ETL en streaming para procesar, enriquecer y validar datos de aerosoles atmosféricos (AOD) de la red AERONET de la NASA, integrados con información meteorológica histórica de la API Open-Meteo y cargados a un Data Warehouse en MySQL.
 Sobre este DW se construye un dashboard interactivo en Streamlit para análisis temporal, espacial y climático del AOD.
 
 ---
 
-## 1. Problem Context
+## 1. Contexto del problema
 
 Los **aerosoles atmosféricos** son partículas diminutas que flotan en el aire. Aunque no las vemos, tienen efectos importantes:
 
-- Pueden empeorar la **calidad del aire** y afectar la **salud**.
-- Modifican el **clima** al alterar la radiación solar que llega a la superficie.
-- Reducen la **visibilidad** y pueden influir en la formación de nubes y lluvia.
+* Pueden empeorar la **calidad del aire** y afectar la **salud**.
+* Modifican el **clima** al alterar la radiación solar que llega a la superficie.
+* Reducen la **visibilidad** y pueden influir en la formación de nubes y lluvia.
 
 La NASA creó la red **AERONET**, que mide la **profundidad óptica de aerosoles (AOD)**. El AOD indica cuánta luz solar es absorbida o dispersada por estas partículas: cuanto más alto, más carga de aerosoles en la columna atmosférica.
 
 Este proyecto construye un pipeline completo para:
-- Procesar datos AOD de AERONET en **streaming**.
-- Enriquecerlos con clima histórico.
-- Validar su calidad.
-- Cargarlos en un modelo dimensional para su análisis en un **dashboard interactivo**.
+
+* Procesar datos AOD de AERONET en **streaming**.
+* Enriquecerlos con clima histórico.
+* Validar su calidad.
+* Cargarlos en un modelo dimensional para su análisis en un **dashboard interactivo**.
 
 ---
 
@@ -30,13 +30,13 @@ Este proyecto construye un pipeline completo para:
 
 Los aerosoles provienen de dos grandes tipos de fuentes:
 
-- **Naturales**: incendios forestales, volcanes, desiertos (polvo mineral), océanos (sal marina).
-- **Antropogénicas**: industria, tráfico urbano, quema de combustibles, agricultura.
+* **Naturales**: incendios forestales, volcanes, desiertos (polvo mineral), océanos (sal marina).
+* **Antropogénicas**: industria, tráfico urbano, quema de combustibles, agricultura.
 
 En el análisis distinguimos entre:
 
-- **Partículas finas**: asociadas principalmente a contaminación y procesos de combustión (tráfico, industria, humo).
-- **Partículas gruesas**: asociadas a polvo mineral, sal marina y otras fuentes naturales.
+* **Partículas finas**: asociadas principalmente a contaminación y procesos de combustión (tráfico, industria, humo).
+* **Partículas gruesas**: asociadas a polvo mineral, sal marina y otras fuentes naturales.
 
 Esta distinción es clave porque los impactos en **salud** y **clima** dependen del tipo de partícula. El dataset de AERONET aporta el AOD en varias longitudes de onda y el **Angstrom Exponent**, que se utiliza para clasificar el tipo de partícula (fine / coarse / mixed).
 
@@ -44,21 +44,22 @@ Esta distinción es clave porque los impactos en **salud** y **clima** dependen 
 
 Además de los datos de la NASA, el pipeline enriquece la información con la **API histórica de Open-Meteo**:
 
-- Permite descargar datos meteorológicos desde el año 2000.
-- Variables usadas (entre otras):
-  - Temperatura media.
-  - Humedad relativa.
-  - Velocidad y dirección del viento.
-  - Radiación solar.
-  - Evapotranspiración (ET0).
-  - Duración de la luz solar.
+* Permite descargar datos meteorológicos desde el año 2000.
+* Variables usadas (entre otras):
+
+  * Temperatura media.
+  * Humedad relativa.
+  * Velocidad y dirección del viento.
+  * Radiación solar.
+  * Evapotranspiración (ET0).
+  * Duración de la luz solar.
 
 Estas variables ayudan a entender **por qué cambia el AOD**:
 
-- Alta humedad → las partículas se hinchan con agua → el AOD tiende a subir.
-- Viento fuerte → puede traer polvo o limpiar la atmósfera.
-- Radiación solar ↓ → puede indicar mayor carga de aerosoles.
-- Temperatura y evaporación influyen en formación, transporte y dispersión de partículas.
+* Alta humedad → las partículas se hinchan con agua → el AOD tiende a subir.
+* Viento fuerte → puede traer polvo o limpiar la atmósfera.
+* Radiación solar ↓ → puede indicar mayor carga de aerosoles.
+* Temperatura y evaporación influyen en formación, transporte y dispersión de partículas.
 
 Combinando **AERONET + Open-Meteo**, no solo vemos cuánto AOD hay, sino también **bajo qué condiciones meteorológicas** aumentan o disminuyen los aerosoles.
 
@@ -66,62 +67,76 @@ Combinando **AERONET + Open-Meteo**, no solo vemos cuánto AOD hay, sino tambié
 
 ## 3. Arquitectura y flujo del pipeline
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/19a59fe5-f56e-4fbe-8902-1b8f9f082d93" />
+
 Flujo general del proyecto:
 
 1. **Producer (`producer.py`)**
-   - Lee el archivo original de AERONET  
+
+   * Lee el archivo original de AERONET
      `All_Sites_Times_Daily_Averages_AOD20.csv`.
-   - Lo envía al topic `general_input` en **lotes de 100 registros**, simulando un stream de datos (con pequeñas pausas entre lotes).
+   * Lo envía al topic `general_input` en **lotes de 100 registros**, simulando un stream de datos (con pequeñas pausas entre lotes).
 
 2. **Consumer transformador (`consumer.py`)**
-   - Escucha el topic `general_input`.
-   - Limpia el lote, reemplaza códigos de missing, convierte tipos y formatea fechas.
-   - Pasa los AOD a formato **largo** (de columnas tipo `AOD_440nm`, `AOD_675nm`, etc. a filas sitio–fecha–hora–longitud de onda).
-   - Construye las dimensiones **básicas del modelo dimensional**:
-     - `dim_date`
-     - `dim_site`
-     - `dim_wavelength`
-   - Genera la tabla de hechos `fact` con:
-     - IDs de dimensiones.
-     - Valores de AOD.
-     - Agua precipitable.
-     - Angstrom Exponent.
-     - Tipo de partícula (fine / coarse / mixed).
-   - Envía:
-     - Un mensaje `clean_batch` a `general_output` (modelo dimensional limpio).
-     - Un mensaje `fine_batch` a `fine_particles` con solo partículas finas.
+
+   * Escucha el topic `general_input`.
+   * Limpia el lote, reemplaza códigos de missing, convierte tipos y formatea fechas.
+   * Pasa los AOD a formato **largo** (de columnas tipo `AOD_440nm`, `AOD_675nm`, etc. a filas sitio–fecha–hora–longitud de onda).
+   * Construye las dimensiones **básicas del modelo dimensional**:
+
+     * `dim_date`
+     * `dim_site`
+     * `dim_wavelength`
+   * Genera la tabla de hechos `fact` con:
+
+     * IDs de dimensiones.
+     * Valores de AOD.
+     * Agua precipitable.
+     * Angstrom Exponent.
+     * Tipo de partícula (fine / coarse / mixed).
+   * Envía:
+
+     * Un mensaje `clean_batch` a `general_output` (modelo dimensional limpio).
+     * Un mensaje `fine_batch` a `fine_particles` con solo partículas finas.
 
 3. **Consumer de enriquecimiento (`enriquecimiento_general.py`)**
-   - Escucha el topic `general_output`.
-   - Para cada combinación única **fecha–latitud–longitud**:
-     - Consulta la API histórica de Open-Meteo (con caché y reintentos).
-     - Construye la dimensión `dim_weather` con variables climáticas.
-     - Asigna un `id_weather` a cada observación y un flag `is_enriched` (1 si encontró clima, 0 en caso contrario).
-   - Empaqueta todo como `enriched_batch` y lo envía al topic `check`.
+
+   * Escucha el topic `general_output`.
+   * Para cada combinación única **fecha–latitud–longitud**:
+
+     * Consulta la API histórica de Open-Meteo (con caché y reintentos).
+     * Construye la dimensión `dim_weather` con variables climáticas.
+     * Asigna un `id_weather` a cada observación y un flag `is_enriched` (1 si encontró clima, 0 en caso contrario).
+   * Empaqueta todo como `enriched_batch` y lo envía al topic `check`.
 
 4. **Consumer de calidad de datos (`consumer_check_rebuild.py`)**
-   - Escucha el topic `check`.
-   - Valida **fact y dimensiones** con **Great Expectations**.
-   - Calcula un porcentaje global de reglas cumplidas por lote.
-   - Solo si el promedio global ≥ **85 %**, el lote se **aprueba**:
-     - Se eliminan duplicados.
-     - Se carga el lote en MySQL alimentando el **Data Warehouse**.
-   - Si no cumple el 85 %, el lote se **rechaza** y no se carga.
+
+   * Escucha el topic `check`.
+   * Valida **fact y dimensiones** con **Great Expectations**.
+   * Calcula un porcentaje global de reglas cumplidas por lote.
+   * Solo si el promedio global ≥ **85 %**, el lote se **aprueba**:
+
+     * Se eliminan duplicados.
+     * Se carga el lote en MySQL alimentando el **Data Warehouse**.
+   * Si no cumple el 85 %, el lote se **rechaza** y no se carga.
 
 5. **Consumer de partículas finas (`consumer_fine_particles.py`)**
-   - Escucha el topic `fine_particles`.
-   - Reconstruye un dataset de ~5000 registros **solo de partículas finas**.
-   - Guarda un CSV (por ejemplo `fine_particles.csv`) con esa muestra.
-   - Lanza un **trigger de Airflow** para iniciar un DAG batch basado en ese dataset.
+
+   * Escucha el topic `fine_particles`.
+   * Reconstruye un dataset de ~5000 registros **solo de partículas finas**.
+   * Guarda un CSV (por ejemplo `fine_particles.csv`) con esa muestra.
+   * Lanza un **trigger de Airflow** para iniciar un DAG batch basado en ese dataset.
 
 6. **Dashboards**
-   - El **Data Warehouse en MySQL** se va actualizando casi en tiempo real a través de Kafka.
-   - Un dashboard en **Streamlit** consulta ese DW y muestra:
-     - Evolución temporal de AOD.
-     - Comparación de partículas finas vs gruesas.
-     - Mapas por sitio/país/continente.
-     - Relación entre AOD y variables climáticas.
-   - El CSV de partículas finas se usa también en flujos batch orquestados con Airflow.
+
+   * El **Data Warehouse en MySQL** se va actualizando casi en tiempo real a través de Kafka.
+   * Un dashboard en **Streamlit** consulta ese DW y muestra:
+
+     * Evolución temporal de AOD.
+     * Comparación de partículas finas vs gruesas.
+     * Mapas por sitio/país/continente.
+     * Relación entre AOD y variables climáticas.
+   * El CSV de partículas finas se usa también en flujos batch orquestados con Airflow.
 
 ---
 
@@ -129,18 +144,21 @@ Flujo general del proyecto:
 
 ### 4.1. `producer.py`
 
-- Punto de entrada del pipeline.
-- Carga el CSV original de AERONET en un DataFrame de pandas.
-- Envía lotes de 100 filas al topic `general_input` con mensajes tipo:
+* Punto de entrada del pipeline.
+
+* Carga el CSV original de AERONET en un DataFrame de pandas.
+
+* Envía lotes de 100 filas al topic `general_input` con mensajes tipo:
 
   ```json
   {
     "type": "data",
     "rows": [ ... 100 filas en formato JSON ... ]
   }
-````
+  ```
 
 * Incluye pausas entre lotes para simular mediciones en tiempo real.
+
 * Al final envía un mensaje `sentinel` para indicar el fin del stream.
 
 ### 4.2. `consumer.py` (transformador principal)
@@ -290,7 +308,7 @@ De esta forma, el dashboard trabaja siempre con datos que han pasado por un mín
 * Airflow (opcional, para los flujos batch con el CSV de finas).
 * Librerías Python típicas:
 
-  * `pandas`, `numpy`, `kafka-python`, `geopandas`, `requests`, `requests-cache`, `openmeteo-requests`, `great_expectations`, `sqlalchemy`, `streamlit`, etc.
+  * `pandas`, `numpy`, `kafka-python`, `geopandas`, `requests`, `requests-cache`, `openmeteo-requests`, `great_expectations==0.17.23`, `sqlalchemy`, `streamlit`, etc.
 
 *(Se recomienda usar `requirements.txt` y un entorno virtual.)*
 
@@ -437,5 +455,3 @@ El dashboard funciona tanto como **herramienta de análisis histórico** como de
 * Gracias al umbral de calidad del **85 %**, se garantiza que las conclusiones que se extraen del dashboard estén basadas en datos con un nivel mínimo de **consistencia y confiabilidad**.
 
 En conjunto, este proyecto muestra un ejemplo completo de cómo diseñar e implementar un **pipeline ETL en streaming** orientado a análisis ambiental, integrando datos satelitales, APIs externas, validación automática y visualización interactiva.
-
-```
