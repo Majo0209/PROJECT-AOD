@@ -1,4 +1,6 @@
 # AERONET AOD Streaming Pipeline
+### [Enlace a la presentación](https://drive.google.com/file/d/1rl5ZqbNASIptdiwON7dj8_h9-P1MApZR/view?usp=drive_link)
+---
 
 Pipeline ETL en streaming para procesar, enriquecer y validar datos de aerosoles atmosféricos (AOD) de la red AERONET de la NASA, integrados con información meteorológica histórica de la API Open-Meteo y cargados a un Data Warehouse en MySQL.
 Sobre este DW se construye un dashboard interactivo en Streamlit para análisis temporal, espacial y climático del AOD.
