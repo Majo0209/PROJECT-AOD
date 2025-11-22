@@ -530,7 +530,7 @@ etl_fine_particles_meteo_enrichment
 
 ### 5. Correr el dashboard Estático:
 
-El dashboard se encuentra en la carpeta `dashboard/` y el script principal es `streamlit.py`.
+El dashboard se ejecuta con el script `streamlit.py`.
 
 1. Verificar conexión a MySQL  
 
@@ -553,7 +553,7 @@ El dashboard se encuentra en la carpeta `dashboard/` y el script principal es `s
 
 2. Configurar `secrets.toml` (opcional)
 
-   En `dashboard/.streamlit/secrets.toml` puedes guardar la configuración de MySQL, por ejemplo:
+   En `.streamlit/secrets.toml` puedes guardar la configuración de MySQL, por ejemplo:
 
    ```toml
    [mysql]
