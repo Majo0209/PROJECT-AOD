@@ -383,6 +383,8 @@ De esta forma, el dashboard trabaja siempre con datos que han pasado por un mín
 
 # **6. Airflow DAG Design**
 
+<img width="1228" height="179" alt="image" src="https://github.com/user-attachments/assets/97f32295-50e4-49c0-a180-ed0f379b8a18" />
+
 El flujo batch procesado por Apache Airflow se basa en un DAG diseñado para ejecutar cinco etapas clave:
 
 ### 1. Extract
@@ -577,7 +579,7 @@ El dashboard se encuentra en la carpeta `dashboard/` y el script principal es `s
    ```
 ---
 
-## 9. Dashboard de AOD
+## 9. Dashboard de AOD Streaming
 
 El dashboard en Streamlit permite explorar el AOD desde varias dimensiones:
 
@@ -632,7 +634,328 @@ El dashboard funciona tanto como **herramienta de análisis histórico** como de
 
 ---
 
+## 10. Dashboard de AOD Estático
+Perfecto. Aquí tienes **el texto completamente organizado**, listo para **copiar y pegar en tu README**, dentro de la sección *“Insights del Dashboard Estático”*.
 
+Lo estructuré por **gráfica**, con explicación clara, insights clave y finalmente **conclusiones alineadas con el objetivo del proyecto**.
+
+---
+
+# 9. Insights del Dashboard estático
+
+A continuación se presentan los análisis derivados de las principales visualizaciones del dashboard estático, segmentados por tipo de gráfico para facilitar su interpretación científica y su relación con los objetivos del proyecto.
+
+---
+
+## **GRÁFICA 1 — Serie temporal diaria de AOD fina (enero–junio 2015)**
+
+<img width="1418" height="474" alt="image" src="https://github.com/user-attachments/assets/5324f300-cca8-455d-9adb-19c810971388" />
+
+La gráfica representa la evolución diaria del AOD fina durante el periodo enero–junio de 2015, utilizando únicamente registros enriquecidos con variables climáticas.
+
+Cada punto corresponde al **promedio diario de AOD fina**, lo cual suaviza variaciones internas del día y permite detectar tendencias reales.
+
+El comportamiento observado es:
+
+* Incremento progresivo desde enero hasta finales de marzo.
+* **Pico máximo (~0.55) en marzo**, seguido de un descenso.
+* Segundo incremento en abril con picos de ~0.45.
+* Valores considerados **medio-altos** desde una perspectiva física, indicando carga significativa de aerosoles finos.
+
+Valores altos de AOD fina revelan mayor concentración de partículas pequeñas, que afectan:
+
+* Calidad del aire.
+* Visibilidad.
+* Radiación solar.
+* Salud humana.
+* Formación de nubes y clima.
+
+### ¿Por qué ocurrió este pico en marzo–abril de 2015?
+
+Este comportamiento coincide con el **inicio oficial del evento El Niño 2015**, uno de los más intensos del siglo XXI.
+
+Durante El Niño:
+
+* El Pacífico ecuatorial se **calienta más de lo normal**.
+* Cambian los patrones de lluvia y viento globales.
+* En varias regiones aumenta la **sequía**, lo cual reduce la “limpieza atmosférica” y permite acumulación de partículas finas.
+
+Esto explica por qué las condiciones climáticas globales favorecieron el incremento del AOD fina en ese periodo.
+
+---
+
+## **GRÁFICA 2 — Mapa global de sitios AERONET (AOD fina promedio)**
+
+<img width="1375" height="548" alt="image" src="https://github.com/user-attachments/assets/d69ee0c5-ec41-45f1-8c09-b7644d68d52e" />
+
+Cada punto representa un sitio AERONET, donde:
+
+* **El color indica el nivel de AOD fina promedio**.
+* **El tamaño refleja la magnitud del AOD fina**.
+
+Interpretación del color:
+
+* Amarillos / claros → aire más limpio.
+* Naranjas → carga moderada.
+* Rojos / oscuros → carga alta de aerosoles finos.
+
+### Principales patrones observados
+
+#### 1. Regiones con AOD muy alta (máximos globales)
+
+Destacan:
+
+* India
+* Pakistán
+* Bangladesh
+* Norte de India/Indo-Gangetic Plain
+
+Razones:
+
+* Quema de biomasa
+* Emisiones industriales
+* Polvo atmosférico
+* Tráfico urbano muy denso
+* Condiciones climáticas que favorecen acumulación
+
+#### 2. Regiones con AOD medio
+
+Se encuentran en:
+
+* Norte de África
+* África subsahariana
+* Sudeste Asiático
+* Medio Oriente
+* Algunas zonas tropicales de Sudamérica
+
+Causas típicas:
+
+* Tormentas de polvo
+* Incendios
+* Actividad agrícola
+* Épocas secas prolongadas
+
+#### 3. Regiones con AOD bajo (aire relativamente limpio)
+
+* Norteamérica
+* Europa
+* Rusia
+* Zonas australes
+* Australia
+* Regiones costeras con buena ventilación
+
+Características:
+
+* Vientos fuertes
+* Alta precipitación anual
+* Menor densidad urbana e industrial
+
+---
+
+## **GRÁFICA 3 — Mapas espaciales: tamaño por AOD fina y color por variable climática**
+
+A continuación se presentan los insights más relevantes para cada variable meteorológica.
+
+---
+
+### **Variable: Temperatura media**
+<img width="1862" height="845" alt="image" src="https://github.com/user-attachments/assets/38f2b30c-6b65-4b1f-b893-5062d7000ffb" />
+
+
+#### Relación observada:
+
+* **Zonas cálidas** → valores altos de AOD fina.
+* **Zonas frías** → valores bajos de AOD fina.
+
+Esto se debe a que temperaturas altas:
+
+* Favorecen la formación de aerosoles secundarios.
+* Coinciden con zonas urbanas, agrícolas o desérticas.
+* Suelen presentar menos lluvia, lo cual evita el “lavado atmosférico”.
+
+Ejemplos:
+
+* India → calor + urbanización → AOD extremadamente alto.
+* África central → calor + quema → AOD elevado.
+
+---
+
+### **Variable: Radiación solar**
+
+<img width="1869" height="828" alt="image" src="https://github.com/user-attachments/assets/36198d31-1249-4827-8dcd-a9953a252e72" />
+
+Regiones con mayor radiación solar promedio también muestran altos niveles de AOD fina:
+
+* Norte de África
+* Medio Oriente
+* Sur de Asia
+
+Esto indica que:
+
+* Alta radiación facilita procesos fotoquímicos que generan aerosoles secundarios.
+* Muchas de estas regiones tienen baja precipitación.
+
+---
+
+### **Variable: Humedad relativa**
+
+<img width="1861" height="827" alt="image" src="https://github.com/user-attachments/assets/2951e5f1-aece-44b4-b7cc-5f9905bd2085" />
+
+Patrón observado:
+
+* Humedad intermedia o alta coincide con valores elevados de AOD fina.
+
+Interpretación:
+
+* Aunque podría pensarse que “más humedad limpia el aire”, en realidad:
+
+  * La humedad **aumenta el tamaño** de partículas higroscópicas.
+  * Mayor tamaño → mayor AOD.
+  * Sólo la **lluvia**, no la humedad, limpia la atmósfera.
+
+---
+
+### **Variable: Velocidad máxima del viento**
+<img width="1863" height="819" alt="image" src="https://github.com/user-attachments/assets/240c8981-884b-41fd-90ce-f0c1451128c4" />
+
+
+Patrón claro:
+
+* **Vientos fuertes** → AOD baja (dispersión de aerosoles).
+* **Vientos débiles** → AOD alta.
+
+Especialmente evidente en:
+
+* Sur de Asia
+* Medio Oriente
+
+Es el **factor meteorológico más efectivo para reducir AOD**.
+
+---
+
+### **Variable: Evapotranspiración FAO**
+
+<img width="1861" height="823" alt="image" src="https://github.com/user-attachments/assets/042509e1-07e2-48d9-b954-c0247027682b" />
+
+Valores altos de evapotranspiración coinciden con:
+
+* Regiones cálidas y semiáridas.
+* Altos niveles de AOD fina.
+
+Esto refleja que ambientes secos, con fuerte radiación solar, favorecen la acumulación de partículas finas y la resuspensión de polvo.
+
+---
+
+### **Variable: Duración de la insolación**
+
+<img width="1861" height="834" alt="image" src="https://github.com/user-attachments/assets/d7841d9c-53e6-411b-957d-426a7c094af9" />
+
+Regiones con más horas de sol:
+
+* Norte de África
+* Medio Oriente
+* Sur de Asia
+
+presentan también burbujas grandes (AOD alto).
+
+Explicación:
+
+* La insolación favorece la formación de aerosoles secundarios por fotoquímica.
+* Estas regiones reciben poca lluvia → el aerosol no se remueve.
+
+---
+
+### **Variable: Agua Precipitable (PW)**
+
+<img width="1867" height="838" alt="image" src="https://github.com/user-attachments/assets/0ceef985-7d04-44be-9b59-0cb44611d11a" />
+
+Insight clave:
+
+* Regiones con alta humedad atmosférica también muestran AOD alto.
+* Esto se debe a que PW indica disponibilidad de vapor, **no lluvia real**.
+
+Durante El Niño 2015, por ejemplo:
+
+* Alta temperatura + alta humedad atmosférica + baja lluvia = acumulación de AOD fina.
+
+---
+
+## **GRÁFICA 4 — Scatter plots: AOD fina vs variables climáticas**
+
+<img width="1281" height="511" alt="image" src="https://github.com/user-attachments/assets/1899c9ea-2810-46e1-b283-e2a7ce2dab38" />
+
+<img width="1247" height="501" alt="image" src="https://github.com/user-attachments/assets/c1c33deb-c408-4833-b6ce-f813f22f9cbc" />
+
+Las relaciones directas más importantes observadas:
+
+* **Temperatura:** Aumenta AOD fina (formación química).
+* **Radiación solar:** Incrementa AOD (fotoquímica).
+* **Humedad:** Aumenta AOD (crecimiento higroscópico).
+* **Velocidad del viento:** Reduce la AOD (dispersión).
+
+Este patrón muestra que:
+
+> Calor + radiación + humedad favorecen el aumento de aerosoles finos, mientras que el viento es el principal mecanismo de limpieza atmosférica.
+
+---
+
+## **GRÁFICA 5 — Interacciones 2D entre variables meteorológicas**
+
+<img width="1381" height="519" alt="image" src="https://github.com/user-attachments/assets/16804c0f-10f1-435c-8c37-058f76f544b3" />
+
+### Conclusiones generales del análisis multivariable:
+
+* La AOD fina es más alta cuando coinciden:
+
+  * Temperaturas elevadas
+  * Radiación solar fuerte
+  * Humedad media-alta
+  * Evapotranspiración alta
+  * Viento débil
+
+* El viento es la variable más efectiva para **reducir AOD**, incluso en ambientes cálidos.
+
+* Las interacciones meteorológicas corroboran que la formación y acumulación de aerosoles finos depende de procesos:
+
+  * termoquímicos
+  * fotoquímicos
+  * higroscópicos
+  * dinámicos (viento)
+
+---
+
+# **Conclusiones según el objetivo del proyecto**
+
+Uno de los objetivos centrales del proyecto era **analizar la evolución temporal, espacial y espectral del AOD** para identificar diferencias entre partículas finas y gruesas.
+
+Los análisis anteriores permiten afirmar que el objetivo se cumplió plenamente:
+
+### 1. Evolución temporal
+
+* Se identificaron picos de AOD fina, especialmente marzo–abril 2015.
+* Se asociaron a condiciones climáticas específicas y al evento El Niño.
+* Se demostró que cambios meteorológicos modifican la carga de aerosoles.
+
+### 2. Variación espacial
+
+* Se detectaron regiones con altos niveles de partículas finas (Asia del Sur, Oriente Medio, zonas tropicales).
+* Se observaron regiones con aire más limpio (Europa, Norteamérica, altas latitudes).
+* La distribución espacial del AOD no es homogénea y depende de geografía, clima y actividad humana.
+
+### 3. Composición espectral
+
+<img width="1213" height="494" alt="image" src="https://github.com/user-attachments/assets/2214356e-a73c-4fc5-9395-ddb701d3e465" />
+
+* Los valores del Ångström Exponent permitieron distinguir partículas finas vs gruesas.
+* Las zonas con valores altos de Ångström coincidieron con aire cargado de partículas finas.
+
+### **Conclusión final**
+
+Se caracterizó exitosamente la **dinámica temporal**, **espacial** y **espectral** de los aerosoles en la red AERONET, demostrando diferencias claras en la composición de partículas y su relación con variables meteorológicas y eventos climáticos globales.
+
+El objetivo del proyecto fue plenamente alcanzado.
+
+---
 
 ## 11. Conclusiones
 
